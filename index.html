@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔮 塔罗牌抽牌游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 25%, #312e81 50%, #4c1d95 75%, #581c87 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .mystical-title {
+            font-family: 'Cinzel', serif;
+            text-shadow: 0 0 20px rgba(167, 139, 250, 0.5), 0 0 40px rgba(139, 92, 246, 0.3);
+        }
+        
+        .card-slot {
+            background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(167, 139, 250, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .card-slot:hover {
+            border-color: rgba(167, 139, 250, 0.8);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.4);
+            transform: translateY(-5px);
+        }
+        
+        .card-slot.selected {
+            border-color: #fbbf24;
+            box-shadow: 0 0 40px rgba(251, 191, 36, 0.6);
+            transform: scale(1.05);
+        }
+        
+        .tarot-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 3px solid #fbbf24;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .tarot-card:hover {
+            transform: translateY(-10px) rotateY(10deg);
+            box-shadow: 0 20px 60px rgba(251, 191, 36, 0.3);
+        }
+        
+        .glow-button {
+            background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #7c3aed 100%);
+            background-size: 200% auto;
+            animation: shine 3s linear infinite;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+        }
+        
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+        
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .card-back {
+            background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #4c1d95 100%);
+            background-image: 
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.05) 20px),
+                repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.05) 20px);
+        }
+        
+        .reveal-animation {
+            animation: reveal 1s ease-out forwards;
+        }
+        
+        @keyframes reveal {
+            0% { transform: rotateY(180deg) scale(0.8); opacity: 0; }
+            100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+        }
+        
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .crystal-ball {
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(167,139,250,0.4) 20%, rgba(88,28,135,0.8) 60%, rgba(15,23,42,1) 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 60px rgba(167, 139, 250, 0.6),
+                inset -10px -10px 20px rgba(0,0,0,0.5),
+                inset 10px 10px 20px rgba(255,255,255,0.3);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        
+        .arcana-major { border-color: #fbbf24; }
+        .arcana-wands { border-color: #ef4444; }
+        .arcana-cups { border-color: #3b82f6; }
+        .arcana-swords { border-color: #a855f7; }
+        .arcana-pentacles { border-color: #22c55e; }
+        
+        .scroll-hidden::-webkit-scrollbar { display: none; }
+        .scroll-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-white relative">
+
+    <!-- 星空背景 -->
+    <div class="stars" id="stars"></div>
+
+    <!-- 主容器 -->
+    <div class="relative z-10 container mx-auto px-4 py-8 max-w-6xl">
+        
+        <!-- 头部 -->
+        <header class="text-center mb-12 floating">
+            <div class="crystal-ball mx-auto mb-6"></div>
+            <h1 class="mystical-title text-5xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-200 via-amber-200 to-purple-200">
+                🔮 塔罗牌抽牌游戏
+            </h1>
+            <p class="text-xl md:text-2xl text-purple-200 font-light tracking-wider">
+                凭你的直觉，选择一张属于你的塔罗牌
+            </p>
+        </header>
+
+        <!-- 游戏区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            
+            <!-- 左侧：选择槽位 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-purple-500/30">
+                    <h2 class="text-2xl font-bold mb-6 text-center text-amber-300">选择你的命运之槽</h2>
+                    <div class="grid grid-cols-3 gap-4 mb-8" id="cardSlots">
+                        <!-- 生成7个槽位 -->
+                        <div class="card-slot aspect-[2/3] rounded-xl cursor-pointer flex items-center justify-center" data-slot="0" onclick="selectSlot(0)">
+                            <span class="text-4xl opacity-30">?</span>
+                        </div>
+                        <div class="card-slot aspect-[2/3] rounded-xl cursor-pointer flex items-center justify-center" data-slot="1" onclick="selectSlot(1)">
+                            <span class="text-4xl opacity-30">?</span>
+                        </div>
+                        <div class="card-slot aspect-[2/3] rounded-xl cursor-pointer flex items-center justify-center" data-slot="2" onclick="selectSlot(2)">
+                            <span class="text-4xl opacity-30">?</span>
+                        </div>
+                        <div class="card-slot aspect-[2/3] rounded-xl cursor-pointer flex items-center justify-center" data-slot="3" onclick="selectSlot(3)">
+                            <span class="text-4xl opacity-30">?</span>
+                        </div>
+                        <div class="card-slot aspect-[2/3] rounded-xl cursor-pointer flex items-center justify-center" data-slot="4" onclick="selectSlot(4)">
+                            <span class="text-4xl opacity-30">?</span>
+                        </div>
+                        <div class="card-slot aspect-[2/3] rounded-xl cursor-pointer flex items-center justify-center" data-slot="5" onclick="selectSlot(5)">
+                            <span class="text-4xl opacity-30">?</span>
+                        </div>
+                        <div class="card-slot aspect-[2/3] rounded-xl cursor-pointer flex items-center justify-center col-start-2" data-slot="6" onclick="selectSlot(6)">
+                            <span class="text-4xl opacity-30">?</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center gap-4">
+                        <button onclick="drawCard()" id="drawBtn" disabled class="glow-button px-8 py-4 rounded-full text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95">
+                            ✨ 抽取塔罗牌
+                        </button>
+                        <button onclick="resetGame()" class="px-8 py-4 rounded-full text-lg font-bold border-2 border-purple-400 hover:bg-purple-500/20 transition-all hover:scale-105 active:scale-95">
+                            🔄 重新开始
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：结果显示 -->
+            <div class="lg:col-span-1">
+                <div class="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-purple-500/30 h-full" id="resultArea">
+                    <h2 class="text-xl font-bold mb-4 text-center text-amber-300">占卜结果</h2>
+                    <div id="resultContent" class="text-center text-purple-200 italic">
+                        请先选择一个槽位，然后点击抽取...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 塔罗牌图鉴 -->
+        <div class="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-purple-500/30">
+            <h2 class="text-3xl font-bold mb-8 text-center mystical-title text-amber-300">塔罗牌全览</h2>
+            <p class="text-center text-purple-300 mb-6">点击任意卡牌查看详细解读</p>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto scroll-hidden p-2" id="cardGallery">
+                <!-- 卡牌将通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情模态框 -->
+    <div id="cardModal" class="fixed inset-0 modal-overlay hidden z-50 flex items-center justify-center p-4" onclick="closeModal(event)">
+        <div class="bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-amber-400/50 shadow-2xl transform scale-95 transition-transform duration-300" onclick="event.stopPropagation()">
+            <div class="p-8">
+                <button onclick="closeModal()" class="absolute top-4 right-4 text-2xl hover:text-amber-400 transition-colors">&times;</button>
+                <div id="modalContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 塔罗牌数据 - 基于搜索结果构建 [^3^][^5^][^6^][^7^]
+        const tarotCards = [
+            // 大阿卡纳 (22张)
+            { id: 0, name: "愚者", nameEn: "The Fool", type: "major", element: "Air", meaning: "新的开始、自由、冒险、无限潜能", desc: "愚者代表着旅程的开始，象征着纯真、自发性和新的开始。它鼓励你信任自己的直觉，勇敢地迈出第一步，即使前路未知。", image: "🃏" },
+            { id: 1, name: "魔术师", nameEn: "The Magician", type: "major", element: "Air", meaning: "创造力、意志力、显化、资源整合", desc: "魔术师拥有将想法转化为现实的能力。你拥有所有需要的工具和资源，现在是采取行动实现目标的最佳时机。", image: "🎩" },
+            { id: 2, name: "女祭司", nameEn: "The High Priestess", type: "major", element: "Water", meaning: "直觉、潜意识、神秘、内在智慧", desc: "女祭司邀请你倾听内在的声音和直觉。答案不在外部世界，而在你内心的深处。保持静默，让智慧浮现。", image: "🌙" },
+            { id: 3, name: "女皇", nameEn: "The Empress", type: "major", element: "Earth", meaning: "丰饶、母性、创造力、感官享受", desc: "女皇象征着丰盛、滋养和创造力的流动。这是一个拥抱美好、享受生活和培育新事物的时期。", image: "👑" },
+            { id: 4, name: "皇帝", nameEn: "The Emperor", type: "major", element: "Fire", meaning: "权威、结构、稳定、父性能量", desc: "皇帝代表着秩序、稳定和领导力。现在是建立坚实基础、制定计划和维护界限的时候。", image: "⚔️" },
+            { id: 5, name: "教皇", nameEn: "The Hierophant", type: "major", element: "Earth", meaning: "传统、信仰、教育、精神指引", desc: "教皇指向传统、信仰体系和精神教导。寻求导师的智慧，或遵循既定的传统来找到你的道路。", image: "📿" },
+            { id: 6, name: "恋人", nameEn: "The Lovers", type: "major", element: "Air", meaning: "爱情、选择、和谐、价值观", desc: "恋人代表着重要的关系和选择。这不仅是关于浪漫爱情，也是关于你价值观的调和与人生方向的抉择。", image: "💕" },
+            { id: 7, name: "战车", nameEn: "The Chariot", type: "major", element: "Water", meaning: "意志力、胜利、决心、控制对立面", desc: "战车象征着通过坚定的意志力克服困难。驾驭你内在对立的力量，朝着目标勇往直前。", image: "🏆" },
+            { id: 8, name: "力量", nameEn: "Strength", type: "major", element: "Fire", meaning: "勇气、耐心、内在力量、同情心", desc: "真正的力量不是强硬的控制，而是温柔的坚持。用耐心和同情心驯服你内在的野兽。", image: "🦁" },
+            { id: 9, name: "隐士", nameEn: "The Hermit", type: "major", element: "Earth", meaning: "内省、独处、寻求真理、内在指引", desc: "隐士时期需要退隐和独处。在寂静中寻找答案，让内在的光芒照亮前行的道路。", image: "🏮" },
+            { id: 10, name: "命运之轮", nameEn: "Wheel of Fortune", type: "major", element: "Fire", meaning: "命运、周期、转折点、业力", desc: "命运之轮转动，带来变化和周期。接受生命的起伏，顺应潮流，抓住转折的机会。", image: "☸️" },
+            { id: 11, name: "正义", nameEn: "Justice", type: "major", element: "Air", meaning: "公正、真理、因果、责任", desc: "正义要求清晰的思维和公正的判断。面对真相，承担你的责任，理解因果法则。", image: "⚖️" },
+            { id: 12, name: "倒吊人", nameEn: "The Hanged Man", type: "major", element: "Water", meaning: "牺牲、新视角、暂停、放手", desc: "倒吊人邀请你从新的角度看问题。通过暂停和放手，获得更深层的领悟和灵性成长。", image: "🙃" },
+            { id: 13, name: "死神", nameEn: "Death", type: "major", element: "Water", meaning: "结束、转化、新生、释放", desc: "死神不是终结，而是转化的开始。放下旧有的模式，为新的生命阶段腾出空间。", image: "💀" },
+            { id: 14, name: "节制", nameEn: "Temperance", type: "major", element: "Fire", meaning: "平衡、调和、耐心、适度", desc: "节制代表着找到中间道路，调和极端。保持耐心和平衡，让事物自然融合。", image: "🏺" },
+            { id: 15, name: "恶魔", nameEn: "The Devil", type: "major", element: "Earth", meaning: "束缚、物质主义、诱惑、阴影面", desc: "恶魔揭示了我们自我设限的模式和依赖。认识到这些束缚大多是自己加诸于己的，你拥有解脱的力量。", image: "😈" },
+            { id: 16, name: "塔", nameEn: "The Tower", type: "major", element: "Fire", meaning: "突变、觉醒、破坏、启示", desc: "塔代表着突然的改变和旧结构的崩塌。虽然剧烈，但这是必要的清理，为新的真理腾出空间。", image: "🗼" },
+            { id: 17, name: "星星", nameEn: "The Star", type: "major", element: "Air", meaning: "希望、灵感、宁静、灵性指引", desc: "星星在黑暗后带来希望和疗愈。保持信心，你的愿望正在被宇宙倾听和滋养。", image: "⭐" },
+            { id: 18, name: "月亮", nameEn: "The Moon", type: "major", element: "Water", meaning: "幻觉、恐惧、潜意识、直觉", desc: "月亮照亮潜意识的世界。面对你的恐惧和不确定性，相信你的直觉穿越迷雾。", image: "🌕" },
+            { id: 19, name: "太阳", nameEn: "The Sun", type: "major", element: "Fire", meaning: "成功、活力、喜悦、 unconscious", desc: "太阳带来清晰、温暖和成功。这是一个充满喜悦、活力和生命力的明亮时期。", image: "☀️" },
+            { id: 20, name: "审判", nameEn: "Judgement", type: "major", element: "Fire", meaning: "重生、觉醒、救赎、评价", desc: "审判召唤你响应内在的呼唤，从过去的经验中觉醒。拥抱你的真正目的，开始新生。", image: "📯" },
+            { id: 21, name: "世界", nameEn: "The World", type: "major", element: "Earth", meaning: "完成、成就、整合、圆满", desc: "世界代表着循环的完成和成就。你已达到一个重要的里程碑，享受这份圆满和统一。", image: "🌍" },
+            
+            // 小阿卡纳 - 权杖 (Wands) - 火元素 [^6^][^17^]
+            { id: 22, name: "权杖王牌", nameEn: "Ace of Wands", type: "wands", element: "Fire", meaning: "新机会、创造力、灵感、潜能", desc: "权杖王牌象征着新的创意项目和热情的火花。一个充满潜力的机会正在向你招手。", image: "🔥" },
+            { id: 23, name: "权杖二", nameEn: "Two of Wands", type: "wands", element: "Fire", meaning: "规划、决策、探索、未来愿景", desc: "权杖二代表着在行动前的规划和选择。放眼未来，制定策略，准备踏上新的征程。", image: "⚡" },
+            { id: 24, name: "权杖三", nameEn: "Three of Wands", type: "wands", element: "Fire", meaning: "扩展、远见、进展、合作", desc: "权杖三显示你的计划正在取得进展。保持远见，探索新的可能性，合作将带来成功。", image: "🚢" },
+            { id: 25, name: "权杖四", nameEn: "Four of Wands", type: "wands", element: "Fire", meaning: "庆祝、稳定、家庭、社区", desc: "权杖四代表着稳定的基础和值得庆祝的时刻。享受与家人朋友的美好时光。", image: "🏛️" },
+            { id: 26, name: "权杖五", nameEn: "Five of Wands", type: "wands", element: "Fire", meaning: "冲突、竞争、挑战、多样性", desc: "权杖五暗示着冲突和竞争。虽然混乱，但这可能是建设性的，促使你成长和进步。", image: "⚔️" },
+            { id: 27, name: "权杖六", nameEn: "Six of Wands", type: "wands", element: "Fire", meaning: "胜利、认可、好消息、自信", desc: "权杖六带来胜利和公众认可。你的努力得到了回报，享受这份荣耀和自信。", image: "🏇" },
+            { id: 28, name: "权杖七", nameEn: "Seven of Wands", type: "wands", element: "Fire", meaning: "防御、坚持、勇气、优势地位", desc: "权杖七要求你捍卫自己的立场。面对挑战，坚持你的信念，你有优势赢得这场战斗。", image: "🛡️" },
+            { id: 29, name: "权杖八", nameEn: "Eight of Wands", type: "wands", element: "Fire", meaning: "速度、行动、进展、消息", desc: "权杖八象征着快速的变化和行动。事情正在加速发展，好消息即将到来。", image: "🎯" },
+            { id: 30, name: "权杖九", nameEn: "Nine of Wands", type: "wands", element: "Fire", meaning: "韧性、准备、坚持、最后防线", desc: "权杖九代表着尽管疲惫但仍坚持战斗。你接近目标了，保持警惕和韧性。", image: "🕯️" },
+            { id: 31, name: "权杖十", nameEn: "Ten of Wands", type: "wands", element: "Fire", meaning: "负担、责任、压力、完成", desc: "权杖十显示你可能承担了太多责任。学会放下不必要的负担，寻求他人的帮助。", image: "🏋️" },
+            
+            // 小阿卡纳 - 圣杯 (Cups) - 水元素 [^6^][^17^]
+            { id: 32, name: "圣杯王牌", nameEn: "Ace of Cups", type: "cups", element: "Water", meaning: "新感情、直觉、灵性、爱", desc: "圣杯王牌象征着情感和灵性的新开始。爱的源泉正在涌出，敞开心扉接受这份礼物。", image: "🍷" },
+            { id: 33, name: "圣杯二", nameEn: "Two of Cups", type: "cups", element: "Water", meaning: "伴侣关系、和谐、吸引力、联结", desc: "圣杯二代表着相互吸引和和谐的伙伴关系。这是关于爱情、友谊或商业合作的平等联结。", image: "💑" },
+            { id: 34, name: "圣杯三", nameEn: "Three of Cups", type: "cups", element: "Water", meaning: "庆祝、友谊、社交、欢乐", desc: "圣杯三带来与朋友共度的欢乐时光。庆祝生活中的美好，享受群体的支持。", image: "🥂" },
+            { id: 35, name: "圣杯四", nameEn: "Four of Cups", type: "cups", element: "Water", meaning: "沉思、不满、重新评估、冥想", desc: "圣杯四暗示着对现状的不满和内向的沉思。重新评估你的选择，新的机会可能就在你眼前。", image: "🤔" },
+            { id: 36, name: "圣杯五", nameEn: "Five of Cups", type: "cups", element: "Water", meaning: "失落、悲伤、失望、专注过去", desc: "圣杯五代表着失落和悲伤。虽然失去了某些东西，但仍有值得感恩和珍惜的事物存在。", image: "😢" },
+            { id: 37, name: "圣杯六", nameEn: "Six of Cups", type: "cups", element: "Water", meaning: "怀旧、童年、回忆、纯真", desc: "圣杯六带来童年的回忆和纯真的快乐。 reconnect with 过去的美好，或帮助他人成长。", image: "🌸" },
+            { id: 38, name: "圣杯七", nameEn: "Seven of Cups", type: "cups", element: "Water", meaning: "选择、幻想、欲望、梦想", desc: "圣杯七显示许多选择和可能性在你面前。区分幻想与现实，明智地选择你的道路。", image: "🌈" },
+            { id: 39, name: "圣杯八", nameEn: "Eight of Cups", type: "cups", element: "Water", meaning: "离开、放弃、寻求更深意义、旅程", desc: "圣杯八代表着离开不再满足你的情况。勇敢地放下，去寻找更深层的意义和满足。", image: "🌙" },
+            { id: 40, name: "圣杯九", nameEn: "Nine of Cups", type: "cups", element: "Water", meaning: "满足、愿望实现、满足、情感丰盛", desc: "圣杯九被称为'愿望牌'。你的愿望即将实现，享受这份情感的满足和丰盛。", image: "✨" },
+            { id: 41, name: "圣杯十", nameEn: "Ten of Cups", type: "cups", element: "Water", meaning: "家庭幸福、和谐、情感圆满、祝福", desc: "圣杯十代表着家庭和情感生活的圆满。和谐的关系和持久的幸福正在你身边。", image: "🏠" },
+            
+            // 小阿卡纳 - 宝剑 (Swords) - 风元素 [^6^][^17^]
+            { id: 42, name: "宝剑王牌", nameEn: "Ace of Swords", type: "swords", element: "Air", meaning: "清晰、突破、新想法、真理", desc: "宝剑王牌带来心智的清晰和新的洞见。真理之剑斩断迷惑，新的想法即将诞生。", image: "⚔️" },
+            { id: 43, name: "宝剑二", nameEn: "Two of Swords", type: "swords", element: "Air", meaning: "僵局、困难决定、回避、平衡", desc: "宝剑二代表着两难的抉择和僵持的局面。面对困难的决定，相信你的直觉。", image: "⚖️" },
+            { id: 44, name: "宝剑三", nameEn: "Three of Swords", type: "swords", element: "Air", meaning: "心碎、悲伤、痛苦、释放", desc: "宝剑三象征着情感的痛苦和心碎。允许自己悲伤，这是疗愈和释放的开始。", image: "💔" },
+            { id: 45, name: "宝剑四", nameEn: "Four of Swords", type: "swords", element: "Air", meaning: "休息、恢复、冥想、沉思", desc: "宝剑四呼吁你休息和恢复。从压力中撤退，给自己时间冥想和充电。", image: "🛌" },
+            { id: 46, name: "宝剑五", nameEn: "Five of Swords", type: "swords", element: "Air", meaning: "冲突、胜利、不择手段、紧张", desc: "宝剑五暗示着冲突和不愉快的胜利。思考你的胜利是否值得付出的代价。", image: "🏴" },
+            { id: 47, name: "宝剑六", nameEn: "Six of Swords", type: "swords", element: "Air", meaning: "过渡、移动、疗愈、离开困难", desc: "宝剑六代表着从困难时期向更好地方的过渡。疗愈的旅程已经开始。", image: "🚣" },
+            { id: 48, name: "宝剑七", nameEn: "Seven of Swords", type: "swords", element: "Air", meaning: "欺骗、策略、偷偷摸摸、机智", desc: "宝剑七暗示着需要策略或可能存在欺骗。谨慎行事，保护你的利益。", image: "🦊" },
+            { id: 49, name: "宝剑八", nameEn: "Eight of Swords", type: "swords", element: "Air", meaning: "限制、束缚、无助、自我设限", desc: "宝剑八显示你可能感到被困，但束缚主要是自我强加的。你有力量解脱自己。", image: "🕸️" },
+            { id: 50, name: "宝剑九", nameEn: "Nine of Swords", type: "swords", element: "Air", meaning: "焦虑、噩梦、恐惧、负面思维", desc: "宝剑九代表着焦虑和失眠。你的恐惧可能被放大了，寻求支持并面对这些担忧。", image: "😰" },
+            { id: 51, name: "宝剑十", nameEn: "Ten of Swords", type: "swords", element: "Air", meaning: "结束、背叛、失败、重生", desc: "宝剑十象征着一个困难的结束。虽然痛苦，但这是必要的终结，新开始即将到来。", image: "🌅" },
+            
+            // 小阿卡纳 - 星币 (Pentacles) - 土元素 [^6^][^17^]
+            { id: 52, name: "星币王牌", nameEn: "Ace of Pentacles", type: "pentacles", element: "Earth", meaning: "新机会、繁荣、显化、物质丰盛", desc: "星币王牌带来物质世界的新机会。种子已经种下，丰盛和繁荣正在成长。", image: "💰" },
+            { id: 53, name: "星币二", nameEn: "Two of Pentacles", type: "pentacles", element: "Earth", meaning: "平衡、适应、时间管理、灵活", desc: "星币二代表着在多个优先事项间保持平衡。保持灵活，适应变化的需求。", image: "🎭" },
+            { id: 54, name: "星币三", nameEn: "Three of Pentacles", type: "pentacles", element: "Earth", meaning: "团队合作、技能、学习、合作", desc: "星币三显示通过团队合作和技能发展取得进展。与他人合作创造卓越。", image: "🏗️" },
+            { id: 55, name: "星币四", nameEn: "Four of Pentacles", type: "pentacles", element: "Earth", meaning: "控制、稳定、占有欲、保守", desc: "星币四代表着对物质安全的渴望。虽然稳定重要，但不要过于执着或吝啬。", image: "🏦" },
+            { id: 56, name: "星币五", nameEn: "Five of Pentacles", type: "pentacles", element: "Earth", meaning: "困难、损失、孤立、担忧", desc: "星币五暗示着物质困难或感到被排斥。记住，帮助是可用的，你并不孤单。", image: "❄️" },
+            { id: 57, name: "星币六", nameEn: "Six of Pentacles", type: "pentacles", element: "Earth", meaning: "慷慨、给予、接受、分享财富", desc: "星币六代表着给予和接受的平衡。慷慨地分享你的资源，也接受他人的帮助。", image: "🎁" },
+            { id: 58, name: "星币七", nameEn: "Seven of Pentacles", type: "pentacles", element: "Earth", meaning: "评估、耐心、长期投资、成长", desc: "星币七呼吁你评估进展并耐心等待。你的努力正在成长，收获即将到来。", image: "🌱" },
+            { id: 59, name: "星币八", nameEn: "Eight of Pentacles", type: "pentacles", element: "Earth", meaning: "技能发展、勤奋、专注、掌握", desc: "星币八代表着专注和勤奋工作。投入时间精进你的技能， mastery 即将到来。", image: "🔨" },
+            { id: 60, name: "星币九", nameEn: "Nine of Pentacles", type: "pentacles", element: "Earth", meaning: "独立、自给自足、享受、成果", desc: "星币九象征着通过努力获得的独立和享受。享受你创造的美好生活。", image: "🦚" },
+            { id: 61, name: "星币十", nameEn: "Ten of Pentacles", type: "pentacles", element: "Earth", meaning: "遗产、长期安全、家庭、传统", desc: "星币十代表着长期的物质安全和家族遗产。你正在建立持久的价值和传统。", image: "👨‍👩‍👧‍👦" }
+        ];
+
+        let selectedSlot = null;
+        let currentCard = null;
+
+        // 初始化星空背景
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.width = Math.random() * 3 + 'px';
+                star.style.height = star.style.width;
+                star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // 初始化卡牌图鉴
+        function initGallery() {
+            const gallery = document.getElementById('cardGallery');
+            tarotCards.forEach(card => {
+                const cardEl = document.createElement('div');
+                cardEl.className = `tarot-card rounded-lg p-3 cursor-pointer aspect-[2/3] flex flex-col items-center justify-center text-center hover:scale-105 transition-transform arcana-${card.type}`;
+                cardEl.innerHTML = `
+                    <div class="text-3xl mb-2">${card.image}</div>
+                    <div class="text-xs font-bold text-amber-200">${card.name}</div>
+                    <div class="text-[10px] text-purple-300 mt-1">${card.nameEn}</div>
+                `;
+                cardEl.onclick = () => showCardDetail(card);
+                gallery.appendChild(cardEl);
+            });
+        }
+
+        // 选择槽位
+        function selectSlot(index) {
+            // 移除之前的选中状态
+            document.querySelectorAll('.card-slot').forEach(slot => {
+                slot.classList.remove('selected');
+                slot.innerHTML = '<span class="text-4xl opacity-30">?</span>';
+            });
+            
+            // 添加新的选中状态
+            const slot = document.querySelector(`[data-slot="${index}"]`);
+            slot.classList.add('selected');
+            selectedSlot = index;
+            
+            // 启用抽牌按钮
+            document.getElementById('drawBtn').disabled = false;
+            
+            // 更新结果区域提示
+            document.getElementById('resultContent').innerHTML = `
+                <div class="text-amber-300 text-lg">已选择槽位 ${index + 1}</div>
+                <div class="text-sm mt-2">点击"抽取塔罗牌"揭示你的命运...</div>
+            `;
+        }
+
+        // 抽取卡牌
+        function drawCard() {
+            if (selectedSlot === null) return;
+            
+            // 随机选择一张牌
+            const randomIndex = Math.floor(Math.random() * tarotCards.length);
+            currentCard = tarotCards[randomIndex];
+            
+            // 更新选中的槽位显示
+            const slot = document.querySelector(`[data-slot="${selectedSlot}"]`);
+            slot.innerHTML = `
+                <div class="w-full h-full rounded-lg card-back flex items-center justify-center text-4xl animate-pulse">
+                    🔮
+                </div>
+            `;
+            
+            // 禁用抽牌按钮
+            document.getElementById('drawBtn').disabled = true;
+            
+            // 延迟显示结果，增加神秘感
+            setTimeout(() => {
+                slot.innerHTML = `
+                    <div class="w-full h-full rounded-lg bg-slate-800 border-2 border-amber-400 flex flex-col items-center justify-center p-2 reveal-animation arcana-${currentCard.type}">
+                        <div class="text-4xl mb-1">${currentCard.image}</div>
+                        <div class="text-xs text-center text-amber-200 font-bold">${currentCard.name}</div>
+                    </div>
+                `;
+                
+                showResult(currentCard);
+            }, 1500);
+        }
+
+        // 显示结果
+        function showResult(card) {
+            const resultArea = document.getElementById('resultContent');
+            const typeColors = {
+                major: 'text-amber-400',
+                wands: 'text-red-400',
+                cups: 'text-blue-400',
+                swords: 'text-purple-400',
+                pentacles: 'text-green-400'
+            };
+            
+            const typeNames = {
+                major: '大阿卡纳',
+                wands: '权杖',
+                cups: '圣杯',
+                swords: '宝剑',
+                pentacles: '星币'
+            };
+            
+            resultArea.innerHTML = `
+                <div class="reveal-animation">
+                    <div class="text-6xl mb-4">${card.image}</div>
+                    <h3 class="text-2xl font-bold ${typeColors[card.type]} mb-2">${card.name}</h3>
+                    <p class="text-sm text-purple-300 mb-3">${card.nameEn} · ${typeNames[card.type]} · ${card.element}</p>
+                    <div class="bg-white/10 rounded-lg p-4 mb-4 text-left">
+                        <p class="text-amber-200 font-semibold mb-2">关键词：${card.meaning}</p>
+                        <p class="text-sm text-gray-300 leading-relaxed">${card.desc}</p>
+                    </div>
+                    <button onclick="showCardDetail(tarotCards.find(c => c.id === ${card.id}))" class="text-sm underline text-purple-300 hover:text-amber-300 transition-colors">
+                        查看详细解读 →
+                    </button>
+                </div>
+            `;
+        }
+
+        // 显示卡牌详情模态框
+        function showCardDetail(card) {
+            const modal = document.getElementById('cardModal');
+            const content = document.getElementById('modalContent');
+            
+            const typeNames = {
+                major: '大阿卡纳 (Major Arcana)',
+                wands: '权杖 (Wands) - 火元素',
+                cups: '圣杯 (Cups) - 水元素',
+                swords: '宝剑 (Swords) - 风元素',
+                pentacles: '星币 (Pentacles) - 土元素'
+            };
+            
+            const typeColors = {
+                major: 'border-amber-400 text-amber-400',
+                wands: 'border-red-400 text-red-400',
+                cups: 'border-blue-400 text-blue-400',
+                swords: 'border-purple-400 text-purple-400',
+                pentacles: 'border-green-400 text-green-400'
+            };
+            
+            content.innerHTML = `
+                <div class="text-center">
+                    <div class="text-8xl mb-4 inline-block animate-pulse">${card.image}</div>
+                    <h2 class="text-3xl font-bold mb-2 mystical-title ${typeColors[card.type].split(' ')[1]}">${card.name}</h2>
+                    <p class="text-xl text-purple-300 mb-2">${card.nameEn}</p>
+                    <span class="inline-block px-4 py-1 rounded-full border ${typeColors[card.type]} text-sm mb-6">
+                        ${typeNames[card.type]}
+                    </span>
+                    
+                    <div class="space-y-4 text-left">
+                        <div class="bg-white/5 rounded-lg p-4">
+                            <h3 class="font-bold text-amber-300 mb-2">🎯 核心含义</h3>
+                            <p class="text-gray-300">${card.meaning}</p>
+                        </div>
+                        
+                        <div class="bg-white/5 rounded-lg p-4">
+                            <h3 class="font-bold text-amber-300 mb-2">📖 详细解读</h3>
+                            <p class="text-gray-300 leading-relaxed">${card.desc}</p>
+                        </div>
+                        
+                        <div class="bg-white/5 rounded-lg p-4">
+                            <h3 class="font-bold text-amber-300 mb-2">💫 正位指引</h3>
+                            <p class="text-gray-300">这张牌在当前情境中提醒你：${card.desc} 保持觉知，信任宇宙的安排。</p>
+                        </div>
+                        
+                        <div class="bg-white/5 rounded-lg p-4">
+                            <h3 class="font-bold text-amber-300 mb-2">🌙 元素属性</h3>
+                            <p class="text-gray-300">${card.element}元素 - ${getElementDesc(card.element)}</p>
+                        </div>
+                    </div>
+                    
+                    <button onclick="closeModal()" class="mt-6 px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-full transition-colors">
+                        关闭
+                    </button>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.querySelector('div').classList.remove('scale-95');
+                modal.querySelector('div').classList.add('scale-100');
+            }, 10);
+        }
+
+        function getElementDesc(element) {
+            const descs = {
+                'Fire': '代表热情、行动、创造力和意志力',
+                'Water': '代表情感、直觉、关系和潜意识',
+                'Air': '代表思维、沟通、理性和挑战',
+                'Earth': '代表物质、稳定、实际和繁荣'
+            };
+            return descs[element] || '';
+        }
+
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const modal = document.getElementById('cardModal');
+            modal.querySelector('div').classList.remove('scale-100');
+            modal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        // 重置游戏
+        function resetGame() {
+            selectedSlot = null;
+            currentCard = null;
+            
+            // 重置所有槽位
+            document.querySelectorAll('.card-slot').forEach((slot, index) => {
+                slot.classList.remove('selected');
+                slot.innerHTML = '<span class="text-4xl opacity-30">?</span>';
+            });
+            
+            // 禁用抽牌按钮
+            document.getElementById('drawBtn').disabled = true;
+            
+            // 重置结果区域
+            document.getElementById('resultContent').innerHTML = '请先选择一个槽位，然后点击抽取...';
+        }
+
+        // 初始化
+        window.onload = function() {
+            createStars();
+            initGallery();
+        };
+    </script>
+</body>
+</html>
